@@ -13,9 +13,6 @@ class SafeMCPTool(MCPTool):
 
 load_dotenv()
 
-if not shutil.which("docker"):
-    raise RuntimeError("Required docker command not found")
-
 github_token = os.getenv('GITHUB_PERSONAL_ACCESS_TOKEN')
 if not github_token:
     raise ValueError("GITHUB_PERSONAL_ACCESS_TOKEN environment variable not set.")
@@ -25,6 +22,10 @@ if not github_repo_name:
     raise ValueError("GITHUB_REPO_NAME environment variable not set.")
 
 has_docker = shutil.which("which docker")
+github_mcp_server_env={
+    "GITHUB_PERSONAL_ACCESS_TOKEN": github_token, 
+    "GITHUB_DYNAMIC_TOOLSETS": "1"
+}
 if has_docker:
     github_mcp_server = StdioServerInfo(
         command="docker",
@@ -36,10 +37,7 @@ if has_docker:
             "-e", "GITHUB_TOOLSETS",
             "modelcontextprotocol/server-github"
         ],
-        env={
-            "GITHUB_PERSONAL_ACCESS_TOKEN": github_token, 
-            "GITHUB_TOOLSETS": "all"
-        },
+        env=github_mcp_server_env,
     )
 else: 
     github_mcp_server = StdioServerInfo(
@@ -48,10 +46,7 @@ else:
             "-y",
             "@modelcontextprotocol/server-github"
         ],
-        env={
-            "GITHUB_PERSONAL_ACCESS_TOKEN": github_token, 
-            "GITHUB_TOOLSETS": "all"
-        },
+        env=github_mcp_server_env,
     )
 
 print("MCP server is created")
@@ -66,7 +61,7 @@ print("MCP tools are created")
 # There is a bug in the MCPTool use of asyncio that prevents it from being used as a tool in the agent.
 # Thats why I had to create SafeMCPTool to prevent errores due to deepcopying.
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(tools=tools),
+    chat_generator=OpenAIChatGenerator(),
     system_prompt="""
     You are a helpful Agent that can read Github repositories content 
     and create issues.
@@ -78,9 +73,10 @@ print("Agent created")
 
 ## Agent query
 user_input = f"""
-Fetch for the content of the README.md of the Github repository {github_repo_name}, if not available.
-If the content is available look for typos. If typos are found then create an issue in the repository.
-Return the number of typos found (0 if none) in raw JSON, no backticks nor formatting.
+Look for typos in the README.md of the Github repository {github_repo_name}.
+If any real ortographic typo is found then create one issue (labels "typo", "docs") to fix them: 
+specify the line and column. Return the number of typos found (0 if none) in raw 
+JSON without backticks nor formatting.
 <exemple>
 {{
     "typos_count": 1

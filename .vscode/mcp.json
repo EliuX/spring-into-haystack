@@ -17,12 +17,12 @@
         "-e",
         "GITHUB_PERSONAL_ACCESS_TOKEN",
         "-e",
-        "GITHUB_TOOLSETS",
+        "GITHUB_DYNAMIC_TOOLSETS",
         "ghcr.io/github/github-mcp-server"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}",
-        "GITHUB_TOOLSETS": "all"
+        "GITHUB_DYNAMIC_TOOLSETS": "1"
       },
       "envFile": "${workspaceFolder}/.env"
     },
@@ -34,7 +34,7 @@
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}",
-        "GITHUB_TOOLSETS": "all"
+        "GITHUB_DYNAMIC_TOOLSETS": "1"
       },
       "envFile": "${workspaceFolder}/.env"
     }
