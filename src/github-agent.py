@@ -1,10 +1,6 @@
 import os
-import pprint
 import shutil
-from asyncio import Future
-from typing import List
 from dotenv import load_dotenv
-from haystack import component
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage 
 from haystack_integrations.tools.mcp import MCPTool, StdioServerInfo
@@ -28,17 +24,35 @@ github_repo_name = os.getenv('GITHUB_REPO_NAME')
 if not github_repo_name:
     raise ValueError("GITHUB_REPO_NAME environment variable not set.")
 
-github_mcp_server = StdioServerInfo(
-    command="npx",
-    args=[
-        "-y",
-        "@modelcontextprotocol/server-github"
-    ],
-    env={
-        "GITHUB_PERSONAL_ACCESS_TOKEN": github_token, 
-        "GITHUB_TOOLSETS": "all"
-    },
-)
+has_docker = shutil.which("which docker")
+if has_docker:
+    github_mcp_server = StdioServerInfo(
+        command="docker",
+        args=[
+            "run",
+            "--rm",
+            "-p", "8080:8080",
+            "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+            "-e", "GITHUB_TOOLSETS",
+            "modelcontextprotocol/server-github"
+        ],
+        env={
+            "GITHUB_PERSONAL_ACCESS_TOKEN": github_token, 
+            "GITHUB_TOOLSETS": "all"
+        },
+    )
+else: 
+    github_mcp_server = StdioServerInfo(
+        command="npx",
+        args=[
+            "-y",
+            "@modelcontextprotocol/server-github"
+        ],
+        env={
+            "GITHUB_PERSONAL_ACCESS_TOKEN": github_token, 
+            "GITHUB_TOOLSETS": "all"
+        },
+    )
 
 print("MCP server is created")
 
@@ -60,22 +74,20 @@ agent = Agent(
     tools=tools,
 )
 
-
 print("Agent created")
 
-## Query to test agent
+## Agent query
 user_input = f"""
 Fetch for the content of the README.md of the Github repository {github_repo_name}, if not available.
 If the content is available look for typos. If typos are found then create an issue in the repository.
-Return the number of typos found (0 if none), in json format
+Return the number of typos found (0 if none) in raw JSON, no backticks nor formatting.
 <exemple>
-{
+{{
     "typos_count": 1
-}
+}}
 </exemple>
 """
 
-agent.warm_up()
 response = agent.run(messages=[ChatMessage.from_user(user_input)])
 
 ## Print the agent thinking process
